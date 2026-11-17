@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: policy-compare
-          image: <+artifact.image>
+          image: <+primary.artifact.image>
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
