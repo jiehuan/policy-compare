@@ -1,0 +1,79 @@
+# Deployment for policy-compare, intended for a dedicated, authorized test namespace.
+# Harness resolves <+artifact.image> from the Service's primary artifact at deployment.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policy-compare
+  labels:
+    app.kubernetes.io/name: policy-compare
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: policy-compare
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: policy-compare
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: policy-compare
+          image: <+artifact.image>
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: '1'
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+---
+# Cluster-internal access only. Internal HTTPS ingress/route is a separate platform change.
+apiVersion: v1
+kind: Service
+metadata:
+  name: policy-compare
+  labels:
+    app.kubernetes.io/name: policy-compare
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: policy-compare
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
