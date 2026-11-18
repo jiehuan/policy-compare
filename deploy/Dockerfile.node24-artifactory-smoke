@@ -1,0 +1,9 @@
+# Diagnostic only: tests whether AXA OpenShift Buildah can pull the
+# Node.js 24 image from the Artifactory Docker repository.
+# This is not the production application image; never deploy it.
+# The "24" tag is intentionally unpinned for this connectivity test only.
+FROM artifactory.platform.axaxl-cloud.com/docker/library/node:24
+
+RUN node --version && node -e "if (process.versions.node.split('.')[0] !== '24') { throw new Error('Expected Node 24') } else { console.log('NODE_24_ARTIFACTORY_SMOKE_OK') }"
+
+CMD ["node", "--version"]
