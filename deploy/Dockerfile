@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
+ARG NODE_IMAGE=artifactory.platform.axaxl-cloud.com/docker/library/node:24
 FROM rust:1.93.0-slim-bookworm@sha256:776861219cd851131c1cec3bbd7cbeb16b99a794048097eb69ad9682a8ed0d57 AS rust-core
 WORKDIR /core
 RUN rustup target add wasm32-unknown-unknown
