@@ -19,11 +19,17 @@
 
 ### 1. 确认 Harness 能读到本仓库
 
-- 本仓库之前的 Node 24 冒烟测试（提交 `9696905`）就是在 Harness 里从本仓库构建的。如果那条 pipeline 还在，它用的 GitHub 连接器就能读本仓库，直接沿用，跳到第 2 步。
-- 如果 Harness 读不到 `github.com/wlvh/policy-compare`，在公司电脑上用 git 同步到 Harness 能读的仓库：
+本分支在 fork `https://github.com/jiehuan/policy-compare`（公开）上，上游是 `wlvh/policy-compare`。两份 YAML 的 `repoName` 已填 `jiehuan/policy-compare`。
+
+- 之前的 Node 24 冒烟测试（提交 `9696905`）在 Harness 里从上游 `wlvh/policy-compare` 构建过。到 Harness 中查看那条 pipeline 用的 GitHub 连接器：
+  - 连接器 URL 是 `https://github.com`（账号级）：可以直接读 fork，`repoName` 保持 `jiehuan/policy-compare`。
+  - 连接器 URL 是 `https://github.com/wlvh`（账号级）：读不到 fork。可以在同一 Harness 项目中新建 GitHub 连接器，类型 Account，URL `https://github.com/jiehuan`，此时 `repoName` 改为 `policy-compare`；仓库公开时只读访问通常不需要写权限。
+  - 连接器 URL 是 `https://github.com/wlvh/policy-compare`（仓库级）：读不到 fork。新建一个 URL 为 `https://github.com/jiehuan/policy-compare` 的仓库级连接器，并删掉两份 YAML 中的 `repoName` 行。
+- 账号级连接器的规则是：连接器 URL + `/` + `repoName` = 仓库地址。
+- 如果 Harness 完全不能访问 github.com，在公司电脑上用 git 同步到 Harness 能读的仓库：
 
   ```sh
-  git clone --branch deploy/harness-openshift https://github.com/wlvh/policy-compare.git
+  git clone --branch deploy/harness-openshift https://github.com/jiehuan/policy-compare.git
   cd policy-compare
   git remote add company <公司仓库地址>
   git push company deploy/harness-openshift
@@ -38,7 +44,7 @@
 | 占位符 | loss-run 中的位置 |
 |---|---|
 | `<ORG_ID>`、`<PROJECT_ID>` | pipeline 顶部的 `orgIdentifier`、`projectIdentifier` |
-| `<GITHUB_CONNECTOR_ID>` | 能读本仓库的 GitHub 连接器（见第 1 步）。loss-run 的 `properties.ci.codebase.connectorRef` 只有在它是账号级（Account）连接器时才能复用；若是仓库级连接器，删掉两份 YAML 中的 `repoName` 行 |
+| `<GITHUB_CONNECTOR_ID>` | 能读 `jiehuan/policy-compare` 的 GitHub 连接器（见第 1 步），连接器 URL 与 `repoName` 的搭配同第 1 步 |
 | `<BUILD_CLUSTER_CONNECTOR_ID>`、`<BUILD_NAMESPACE>` | CI stage 的 `infrastructure`。建议整块照抄 loss-run 的 `infrastructure` |
 | `<ARTIFACTORY_DOCKER_CONNECTOR_ID>` | CI 构建推送步骤的 `connectorRef` |
 | `<ARTIFACTORY_DOCKER_HOST>/<DOCKER_LOCAL_REPO>` | 该步骤的 `repo`，去掉最后的镜像名 |
@@ -82,7 +88,7 @@
 
 ### 7. 合并到 main
 
-跑通后，在 GitHub 上把 `deploy/harness-openshift` 合并到 `main`。然后把 service 中 manifest 的 `branch` 改成 `main`，以后运行时选 `main`。
+跑通后，在 GitHub 上把 `deploy/harness-openshift` 合并到 fork 的 `main`（并按需向上游 `wlvh/policy-compare` 提 Pull Request）。然后把 service 中 manifest 的 `branch` 改成 `main`，以后运行时选 `main`。
 
 ### 常见问题
 

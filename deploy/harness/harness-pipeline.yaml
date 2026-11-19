@@ -10,9 +10,9 @@ pipeline:
     ci:
       codebase:
         connectorRef: <GITHUB_CONNECTOR_ID>
-        # Keep repoName only if the connector is account-level (not repo-level).
+        # Account-level connector: connector URL + "/" + repoName must equal the repository URL. Repo-level connector: delete repoName.
         # Change it if the code was mirrored to another repository Harness can read.
-        repoName: wlvh/policy-compare
+        repoName: jiehuan/policy-compare
         build: <+input>
   stages:
     - stage:
