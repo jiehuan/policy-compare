@@ -1,0 +1,45 @@
+# Harness Service: policy-compare
+# Replace every <...> placeholder. Copy the connector IDs and the Artifactory artifact-source
+# fields (repository, repositoryUrl) from the working loss-run service so they match exactly.
+service:
+  name: policy-compare
+  identifier: policycompare
+  orgIdentifier: <ORG_ID>
+  projectIdentifier: <PROJECT_ID>
+  serviceDefinition:
+    type: Kubernetes
+    spec:
+      manifests:
+        - manifest:
+            identifier: policycompare_manifests
+            type: K8sManifest
+            spec:
+              store:
+                type: Github
+                spec:
+                  connectorRef: <GITHUB_CONNECTOR_ID>
+                  # Keep repoName only if the connector is account-level (not repo-level).
+                  # Change it if the code was mirrored to another repository Harness can read.
+                  repoName: wlvh/policy-compare
+                  gitFetchType: Branch
+                  # Must be the branch the pipeline builds. Change to main after the branch is merged.
+                  branch: deploy/harness-openshift
+                  paths:
+                    - deploy/harness/templates
+              valuesPaths:
+                - deploy/harness/values.yaml
+              skipResourceVersioning: false
+      artifacts:
+        primary:
+          primaryArtifactRef: <+input>
+          sources:
+            - identifier: artifactory
+              type: ArtifactoryRegistry
+              spec:
+                connectorRef: <ARTIFACTORY_CONNECTOR_ID>
+                repository: <DOCKER_LOCAL_REPO>
+                repositoryFormat: docker
+                artifactPath: policy-compare
+                # Same value as in the loss-run service, if it sets one.
+                repositoryUrl: <ARTIFACTORY_DOCKER_HOST>
+                tag: <+input>

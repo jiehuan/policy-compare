@@ -1,0 +1,101 @@
+# Harness Pipeline: build the image (CI), push to Artifactory, roll out to OpenShift (CD).
+# Replace every <...> placeholder; copy the values from the working loss-run pipeline.
+# Create the service in deploy/harness/harness-service.yaml first.
+pipeline:
+  name: policy-compare
+  identifier: policycompare
+  orgIdentifier: <ORG_ID>
+  projectIdentifier: <PROJECT_ID>
+  properties:
+    ci:
+      codebase:
+        connectorRef: <GITHUB_CONNECTOR_ID>
+        # Keep repoName only if the connector is account-level (not repo-level).
+        # Change it if the code was mirrored to another repository Harness can read.
+        repoName: wlvh/policy-compare
+        build: <+input>
+  stages:
+    - stage:
+        name: Build
+        identifier: Build
+        type: CI
+        spec:
+          cloneCodebase: true
+          # Use the same build infrastructure block as the loss-run pipeline.
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: <BUILD_CLUSTER_CONNECTOR_ID>
+              namespace: <BUILD_NAMESPACE>
+              automountServiceAccountToken: true
+              nodeSelector: {}
+              os: Linux
+          execution:
+            steps:
+              - step:
+                  type: BuildAndPushDockerRegistry
+                  name: Build and push
+                  identifier: build_push
+                  spec:
+                    connectorRef: <ARTIFACTORY_DOCKER_CONNECTOR_ID>
+                    repo: <ARTIFACTORY_DOCKER_HOST>/<DOCKER_LOCAL_REPO>/policy-compare
+                    tags:
+                      - r<+pipeline.sequenceId>-<+codebase.shortCommitSha>
+                    # Runtime-only image: the web app is prebuilt and committed under prebuilt/mupdf/.
+                    # For a full source build use deploy/Dockerfile instead (needs npm + Rust access).
+                    dockerfile: deploy/Dockerfile.prebuilt
+                    context: .
+                    buildArgs:
+                      ENGINE: mupdf
+                      # Default is artifactory.platform.axaxl-cloud.com/docker/library/node:24 (verified pullable in Harness)
+                      # NODE_IMAGE: <override if needed>
+    - stage:
+        name: Deploy
+        identifier: Deploy
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: policycompare
+            serviceInputs:
+              serviceDefinition:
+                type: Kubernetes
+                spec:
+                  artifacts:
+                    primary:
+                      primaryArtifactRef: artifactory
+                      sources:
+                        - identifier: artifactory
+                          type: ArtifactoryRegistry
+                          spec:
+                            tag: r<+pipeline.sequenceId>-<+codebase.shortCommitSha>
+          # Reuse the environment and OpenShift infrastructure definition of the loss-run pipeline.
+          environment:
+            environmentRef: <ENVIRONMENT_ID>
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: <INFRA_DEFINITION_ID>
+          execution:
+            steps:
+              - step:
+                  type: K8sRollingDeploy
+                  name: Rolling Deployment
+                  identifier: rollingDeployment
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+            rollbackSteps:
+              - step:
+                  type: K8sRollingRollback
+                  name: Rolling Rollback
+                  identifier: rollingRollback
+                  timeout: 10m
+                  spec:
+                    pruningEnabled: false
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
