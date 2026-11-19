@@ -1,23 +1,37 @@
+# Base images and package sources are build args so a corporate build (e.g. Harness CI) can point
+# them at an internal mirror such as Artifactory. The Node default is the AXA XL Artifactory image
+# verified pullable from Harness/OpenShift Buildah; the other defaults are public sources.
 ARG NODE_IMAGE=artifactory.platform.axaxl-cloud.com/docker/library/node:24
-FROM rust:1.93.0-slim-bookworm@sha256:776861219cd851131c1cec3bbd7cbeb16b99a794048097eb69ad9682a8ed0d57 AS rust-core
+ARG RUST_IMAGE=rust:1.93.0-slim-bookworm@sha256:776861219cd851131c1cec3bbd7cbeb16b99a794048097eb69ad9682a8ed0d57
+FROM ${RUST_IMAGE} AS rust-core
+# Optional rustup dist mirror for the wasm32 target. Not needed when RUST_IMAGE already has it.
+ARG RUSTUP_DIST_SERVER
 WORKDIR /core
-RUN rustup target add wasm32-unknown-unknown
+RUN if rustup target list --installed | grep -qx wasm32-unknown-unknown; then echo "wasm32 target already installed"; \
+    else if [ -z "$RUSTUP_DIST_SERVER" ]; then unset RUSTUP_DIST_SERVER; fi && rustup target add wasm32-unknown-unknown; fi
+# Crates come from vendor/ (see .cargo/config.toml), so this stage never contacts crates.io.
 COPY rust-toolchain.toml Cargo.toml Cargo.lock ./
+COPY .cargo ./.cargo
+COPY vendor ./vendor
 COPY crates ./crates
-RUN cargo build --locked --release --target wasm32-unknown-unknown && mkdir /rust-licenses && \
-    for dir in /usr/local/cargo/registry/src/*/*; do \
+RUN cargo build --locked --offline --release --target wasm32-unknown-unknown && mkdir /rust-licenses && \
+    for dir in /core/vendor/*; do \
       name=$(basename "$dir"); mkdir -p "/rust-licenses/$name"; \
       find "$dir" -maxdepth 1 -type f \( -iname 'license*' -o -iname 'notice*' -o -iname 'copying*' \) -exec cp {} "/rust-licenses/$name/" \;; \
     done
-RUN cargo metadata --format-version 1 --locked > /rust-licenses/cargo-metadata.json
+RUN cargo metadata --format-version 1 --locked --offline > /rust-licenses/cargo-metadata.json
 
 FROM ${NODE_IMAGE} AS build
 ARG ENGINE
 ARG RELEASE_ID
 ARG REVISION
 ARG CONTACT
+# Optional npm registry mirror, e.g. https://artifactory.example.com/artifactory/api/npm/npm-remote/
+ARG NPM_REGISTRY
 WORKDIR /build
-RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
+RUN if [ -n "$NPM_REGISTRY" ]; then \
+      printf 'registry=%s\n' "$NPM_REGISTRY" > /root/.npmrc && export COREPACK_NPM_REGISTRY="$NPM_REGISTRY"; \
+    fi && corepack enable && corepack prepare pnpm@10.12.1 --activate
 COPY package.json pnpm-lock.yaml tsconfig.json tsconfig.pdfjs.json tsconfig.mupdf.json vite.config.ts ./
 COPY patches ./patches
 RUN pnpm install --frozen-lockfile

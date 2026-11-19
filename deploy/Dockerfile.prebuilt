@@ -1,0 +1,16 @@
+# Runtime-only image for build environments without internet access (e.g. AXA XL Harness CI).
+# The web app is built beforehand on a machine with internet and committed under prebuilt/<engine>/
+# (see deploy/harness/README.md). This image needs no npm, Rust or apt access: only the Node base image.
+# Default verified pullable from AXA XL Harness/OpenShift Buildah (deploy/Dockerfile.node24-artifactory-smoke).
+ARG NODE_IMAGE=artifactory.platform.axaxl-cloud.com/docker/library/node:24
+FROM ${NODE_IMAGE}
+ARG ENGINE=mupdf
+WORKDIR /app
+COPY prebuilt/${ENGINE} ./dist
+COPY deploy/server.mjs ./server.mjs
+RUN chmod -R a=rX /app
+ENV HOST=0.0.0.0 PORT=8080 STATIC_ROOT=/app/dist NODE_ENV=production
+USER 10001:10001
+EXPOSE 8080
+# server.mjs verifies every file against dist/build-info.json at startup and exits on any mismatch.
+CMD ["node", "server.mjs"]

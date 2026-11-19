@@ -59,6 +59,8 @@ After installing the selected engine, developers can run `pnpm start:local mupdf
 
 The public pilot is documented at [compare.huaweidata.com](https://compare.huaweidata.com/). Check the release shown on the page: the deployed candidate may differ from `main`. See the [pilot task guide](docs/public-pilot.md) and [Cloudflare deployment guide](deploy/cloudflare/README.md).
 
+To deploy through Harness CI/CD (Artifactory image, OpenShift Route), see [deploy/harness/README.md](deploy/harness/README.md).
+
 For Issue #17 version paths, browser checks against actual candidate containers, OpenShift templates, publication and rollback, see the [deployment guide](docs/deployment.md). Public hosting does not establish that the application has passed company-network, OpenShift or designated-user acceptance.
 
 The [release-image trial procedure](docs/release-image-testing.md) reuses a checked image. After the automated container checks pass, run `pnpm preview:release <path-to-container.json> 8088` to try that exact image locally with Docker and record observations. A Red Hat account is not required. Manual review and actual OpenShift verification are recorded separately.

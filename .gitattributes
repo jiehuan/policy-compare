@@ -3,3 +3,8 @@ reports/issue-24/**/*.log -whitespace
 reports/review-notices/*.log -whitespace
 reports/review-flow/evidence/*.log -whitespace
 tests/fixtures/review-flow/*.pdf binary
+
+# Vendored crates are checksum-verified by Cargo; keep their bytes (including CRLF) unchanged.
+vendor/** -text -diff
+# Prebuilt web app files are hash-checked by deploy/server.mjs at startup; keep their bytes unchanged.
+prebuilt/** -text -diff

@@ -1,0 +1,34 @@
+# Values for the Harness Kubernetes service (manifest type: K8sManifest).
+# Harness resolves the <+...> expressions here, then renders templates/*.yaml with Go templating.
+# Override any of these per environment with a Harness values override.
+
+name: policy-compare
+
+# Primary artifact configured in the Harness service (Artifactory Docker image).
+image: <+artifacts.primary.image>
+
+replicas: 1
+
+# Leave empty to let OpenShift generate <name>-<namespace>.<apps domain> on the default router.
+# Set it to the internal hostname assigned by the platform team when you have one.
+host: ""
+
+# Extra Route labels, only if your platform's internal ingress controller selects Routes by label.
+routeLabels: {}
+
+# Set to the name of an existing pull secret if the namespace's default service account
+# cannot already pull from Artifactory. Leave empty otherwise.
+imagePullSecret: ""
+
+# Enable only if the namespace has a default-deny NetworkPolicy and no existing
+# allow-from-openshift-ingress policy.
+networkPolicy:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: "1"
+    memory: 256Mi
